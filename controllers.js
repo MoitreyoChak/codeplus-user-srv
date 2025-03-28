@@ -68,7 +68,7 @@ const getAllsubmissions = catchAsyncError(async (req, res) => {
 })
 
 const submitQuestion = catchAsyncError(async (req, res) => {
-    const user = await User.findById(req.params.id).select("questionsPosted").lean();
+    let questionsPosted = await User.findById(req.params.id).select("questionsPosted -_id").lean();
     let statusCode = 200;
     let resObj = { status: "success" }
 
@@ -83,14 +83,15 @@ const submitQuestion = catchAsyncError(async (req, res) => {
         resObj.status = "error";
         resObj.message = "Please provide question title"
     }
+    questionsPosted = questionsPosted?.questionsPosted;
 
     const question = {
         questionId: req.params.qid,
         questionTitle: req.body.title
     }
-    user.questionsPosted.push(question);
+    questionsPosted.push(question);
 
-    if (resObj.status === "success") await User.findByIdAndUpdate(req.params.id, user)
+    if (resObj.status === "success") await User.findByIdAndUpdate(req.params.id, { $set: { questionsPosted } })
 
     res.status(statusCode).json(resObj);
 })
@@ -106,7 +107,12 @@ const makeSubmission = catchAsyncError(async (req, res) => {
         statusCode = 400;
         resObj.status = "error";
         resObj.message = "Please provide question Id"
-    } else {
+    } else if (!req.body.problemSetter) {
+        statusCode = 400;
+        resObj.status = "error";
+        resObj.message = "Please provide problem setter name"
+    }
+    else {
         let questions = await User.findOne({ name: req.body.problemSetter }).select("questionsPosted -_id").lean();
         questions = questions.questionsPosted;
         console.log(questions)
@@ -141,6 +147,14 @@ const updateSubmissionStatus = catchAsyncError(async (req, res) => {
     let submissions = await User.findById(req.params.id).select("submissions -_id").lean();
     let statusCode = 200;
     let resObj = { status: "success" }
+
+    const allowedStatus = ['AC', 'WA', 'runtime error', 'TLE', 'pending'];
+
+    if (!allowedStatus.includes(req.body.status)) {
+        statusCode = 400;
+        resObj.status = "error";
+        resObj.message = "Please provide a valid status to update!"
+    }
 
     if (!submissions) {
         statusCode = 400;

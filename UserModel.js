@@ -28,7 +28,7 @@ const submission = new Schema({
     },
     status: {
         type: String,
-        enum: ['accepted', 'WA', 'runtime error', 'TLE', 'pending'],
+        enum: ['AC', 'WA', 'runtime error', 'TLE', 'pending'],
         default: 'pending'
     }
 },

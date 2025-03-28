@@ -11,7 +11,7 @@ router.route("/").get((req, res) => {
 
 router.route("/insert").post(insertUser);
 
-router.route("/delete/:id").post(deleteUser);
+router.route("/delete/:id").delete(deleteUser);
 
 router.route("/:id").get(getUserDetails);
 
