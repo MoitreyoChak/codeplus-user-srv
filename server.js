@@ -1,5 +1,7 @@
 import mongoose from "mongoose";
 import app from "./app.js";
+import { initJetStream } from "./jetStreamSetup.js";
+
 
 const PORT = 5000;
 const { MONGODB_URI } = process.env;
@@ -24,7 +26,20 @@ const connectDB = async () => {
     }
 };
 
+const connectjetStream = async () => {
+    try {
+        await initJetStream();
+        console.log("Successfully connected to jetStream");
+    } catch (error) {
+        console.error(error);
+        return Promise.reject(error);
+    }
+};
+
 await connectDB();
+await connectjetStream();
+
+
 app.listen(PORT, () => {
     console.log(`listening on port ${PORT}`);
 });

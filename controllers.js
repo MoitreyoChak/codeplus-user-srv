@@ -16,7 +16,7 @@ const insertUser = catchAsyncError(async (req, res) => {
 const deleteUser = catchAsyncError(async (req, res) => {
     const result = await User.findByIdAndDelete(req.params.id);
 
-    const resObj = {
+    let resObj = {
         status: 'success'
     }
     let statusCode = 200;
@@ -38,7 +38,7 @@ const getUserDetails = catchAsyncError(async (req, res) => {
     const user = await User.findById(id).select("-_id -__v -createdAt -updatedAt").lean();
 
     if (!user) {
-        return res.status(404).json({ status: 'success', message: "User not found" });
+        return res.status(404).json({ status: 'error', message: "User not found" });
     }
 
     user.submissions = user.submissions.slice(-3); // Get latest 3 submissions

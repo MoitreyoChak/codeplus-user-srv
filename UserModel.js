@@ -18,6 +18,10 @@ const question = new Schema({
 );
 
 const submission = new Schema({
+    submissionId: {
+        type: Schema.ObjectId,
+        required: [true, "Please provide the submission ID"],
+    },
     questionId: {
         type: Schema.ObjectId,
         required: [true, "Please provide the question ID"],
@@ -28,7 +32,7 @@ const submission = new Schema({
     },
     status: {
         type: String,
-        enum: ['AC', 'WA', 'runtime error', 'TLE', 'pending'],
+        enum: ['AC', 'WA', 'TLE'],
         default: 'pending'
     }
 },
