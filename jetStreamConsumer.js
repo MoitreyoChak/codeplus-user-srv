@@ -1,7 +1,5 @@
-import { initJetStream, getJetStreamClients } from "./jetStreamSetup.js";
-import { AckPolicy } from "nats";
+import { getJetStreamClients } from "./jetStreamSetup.js";
 import { User } from "./UserModel.js";
-
 
 const makeSubmission = async (data) => {
     const { id, submissionId, qid, questionTitle, problemSetter, status } = data;
@@ -30,33 +28,8 @@ const makeSubmission = async (data) => {
 }
 
 
-(async () => {
-    console.clear();
-
-    try {
-        await initJetStream();
-        console.log("✅ Successfully connected to jetStream");
-    } catch (e) {
-        console.error("❌ jetStream connection error", e.message);
-    }
+export const startConsumer = async () => {
     const { js, jsm, sc, nc } = getJetStreamClients();
-
-    // Ensure durable consumer exists
-    try {
-        await jsm.consumers.info("USER", "user-submission-worker");
-        console.log("✅ Durable consumer already exists.");
-    } catch (err) {
-        await jsm.consumers.add("USER", {
-            durable_name: "user-submission-worker",
-            ack_policy: AckPolicy.Explicit,
-            filter_subject: "user.submission.created",
-            deliver_policy: "all",
-            max_deliver: 5, // Retry up to 5 times
-            ack_wait: 30_000, // Retry after 30 seconds if not acked
-            replay_policy: "instant",
-        });
-        console.log("✅ Durable consumer created.");
-    }
 
     let consumer = null;
     // Get durable consumer using modern API
@@ -102,4 +75,4 @@ const makeSubmission = async (data) => {
 
     pullMessages();
 
-})();
+};
