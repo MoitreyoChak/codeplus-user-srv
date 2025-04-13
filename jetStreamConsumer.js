@@ -1,11 +1,44 @@
 import { initJetStream, getJetStreamClients } from "./jetStreamSetup.js";
 import { AckPolicy } from "nats";
-// import { makeSubmissionFromMessage } from "./controllers.js";
+import { User } from "./UserModel.js";
+
+
+const makeSubmission = async (data) => {
+    const { id, submissionId, qid, questionTitle, problemSetter, status } = data;
+    const user = await User.findById(id).select("submissions").lean();
+
+    if (!user) {
+        console.warn("⚠️ No user found with provided id. Could not persist submission in user srv.");
+        return;
+    }
+
+    const submission = {
+        submissionId,
+        questionId: qid,
+        questionTitle,
+        status: status
+    }
+    user.submissions.push(submission);
+
+    try {
+        await User.findByIdAndUpdate(id, user);
+        console.log("✅ Submission persisted successfully");
+    } catch (e) {
+        console.error("❌ Error while storing the submission:", e.message);
+    }
+
+}
 
 
 (async () => {
     console.clear();
-    await initJetStream();
+
+    try {
+        await initJetStream();
+        console.log("✅ Successfully connected to jetStream");
+    } catch (e) {
+        console.error("❌ jetStream connection error", e.message);
+    }
     const { js, jsm, sc, nc } = getJetStreamClients();
 
     // Ensure durable consumer exists
@@ -25,9 +58,14 @@ import { AckPolicy } from "nats";
         console.log("✅ Durable consumer created.");
     }
 
-
+    let consumer = null;
     // Get durable consumer using modern API
-    const consumer = await js.consumers.get("USER", "user-submission-worker");
+    try {
+        consumer = await js.consumers.get("USER", "user-submission-worker");
+        console.log("✅ jetStream consumer started...");
+    } catch (e) {
+        console.error("❌ jetStream consumer error", e.message);
+    }
 
     // Pull messages continuously
     const pullMessages = async () => {
@@ -49,7 +87,8 @@ import { AckPolicy } from "nats";
                     }
                     console.log("📩 Received user submission:", data);
 
-                    await new Promise(r => setTimeout(r, 0));
+                    await makeSubmission(data);
+
                     m.ack();
                     console.log("✅ ACK done");
                 }
@@ -62,4 +101,5 @@ import { AckPolicy } from "nats";
     };
 
     pullMessages();
+
 })();

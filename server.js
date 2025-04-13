@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import app from "./app.js";
-import { initJetStream } from "./jetStreamSetup.js";
+import "./jetStreamConsumer.js";
 
 
 const PORT = 5000;
@@ -17,7 +17,7 @@ const connectDB = async () => {
         isConnected = connection.readyState === 1;
 
         if (isConnected) {
-            console.log("Successfully connected to MongoDB");
+            console.log("✅ Successfully connected to MongoDB");
             return Promise.resolve(true);
         }
     } catch (error) {
@@ -26,20 +26,10 @@ const connectDB = async () => {
     }
 };
 
-const connectjetStream = async () => {
-    try {
-        await initJetStream();
-        console.log("Successfully connected to jetStream");
-    } catch (error) {
-        console.error(error);
-        return Promise.reject(error);
-    }
-};
 
 await connectDB();
-await connectjetStream();
 
 
 app.listen(PORT, () => {
-    console.log(`listening on port ${PORT}`);
+    console.log(`user server listening on port ${PORT}...`);
 });

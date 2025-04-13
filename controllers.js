@@ -2,14 +2,19 @@ import { User } from "./UserModel.js";
 import catchAsyncError from "./catchAsync.js";
 
 const insertUser = catchAsyncError(async (req, res) => {
+    // await User.collection.dropIndex('questionsPosted.questionId_1');
+
     const user = {
         name: req.body.name,
-        email: req.body.email
+        email: req.body.email,
+        questionsPosted: [],
+        submissions: []
     }
-    await User.create(user);
+    const result = await User.create(user);
 
     res.status(200).json({
-        status: 'success'
+        status: 'success',
+        result
     });
 })
 

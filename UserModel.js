@@ -4,8 +4,7 @@ const { Schema } = mongoose;
 const question = new Schema({
     questionId: {
         type: Schema.ObjectId,
-        unique: true,
-        required: [true, "Please provide the question ID"],
+        // required: [true, "Please provide the question ID"],
     }, // this id comes from QuestionModel from questions service
     questionTitle: {
         type: String,
@@ -73,6 +72,7 @@ const user = new Schema(
 );
 
 
+const User = mongoose.models.UserDetails || mongoose.model("UserDetails", user);
 
-const User = mongoose.model("UserDetails", user);
+// const User = mongoose.model("UserDetails", user);
 export { User };
