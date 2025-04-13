@@ -1,7 +1,9 @@
 import mongoose from "mongoose";
 import app from "./app.js";
 import { initJetStream } from "./jetStreamSetup.js";
-import { startConsumer } from "./jetStreamConsumer.js";
+import { startSubmissionConsumer } from "./submissionConsumer.js";
+import { startQuestionConsumer } from "./questionConsumer.js";
+
 
 console.clear();
 
@@ -38,7 +40,8 @@ try {
     console.error("❌ jetStream connection error", e.message);
 }
 
-await startConsumer();
+await startSubmissionConsumer();
+await startQuestionConsumer();
 
 
 app.listen(PORT, () => {

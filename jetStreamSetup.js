@@ -27,7 +27,7 @@ export const initJetStream = async () => {
         // Ensure durable consumer exists
         try {
             await jsm.consumers.info("USER", "user-submission-worker");
-            console.log("✅ Durable consumer already exists.");
+            console.log("✅ Durable consumer user-submission-worker already exists.");
         } catch (err) {
             await jsm.consumers.add("USER", {
                 durable_name: "user-submission-worker",
@@ -42,10 +42,10 @@ export const initJetStream = async () => {
         }
 
         try {
-            await jsm.consumers.info("USER", "question-worker");
+            await jsm.consumers.info("QUESTION", "question-worker");
             console.log("✅ Durable consumer already exists.");
         } catch (err) {
-            await jsm.consumers.add("USER", {
+            await jsm.consumers.add("QUESTION", {
                 durable_name: "question-worker",
                 ack_policy: AckPolicy.Explicit,
                 filter_subject: "question.created",
@@ -66,8 +66,3 @@ export const initJetStream = async () => {
 export const getJetStreamClients = () => {
     return { nc, js, jsm, sc };
 };
-
-
-(async () => {
-
-})();

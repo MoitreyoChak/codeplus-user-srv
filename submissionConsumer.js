@@ -28,21 +28,21 @@ const makeSubmission = async (data) => {
 }
 
 
-export const startConsumer = async () => {
+export const startSubmissionConsumer = async () => {
     const { js, jsm, sc, nc } = getJetStreamClients();
 
     let consumer = null;
     // Get durable consumer using modern API
     try {
         consumer = await js.consumers.get("USER", "user-submission-worker");
-        console.log("✅ jetStream consumer started...");
+        console.log("✅ jetStream consumer user-submission-worker started...");
     } catch (e) {
         console.error("❌ jetStream consumer error", e.message);
     }
 
     // Pull messages continuously
     const pullMessages = async () => {
-        console.log("[*] starting to pull messages...");
+        console.log("[*] starting to pull submissions...");
         while (true) {
             // const messages = await consumer.fetch({ max_messages: 10, expires: 10000 });
             // const messages = await consumer.consume({ expires: 0 }); // 0 = no timeout, keeps listening
@@ -66,7 +66,7 @@ export const startConsumer = async () => {
                     console.log("✅ ACK done");
                 }
             } catch (err) {
-                console.error("❌ Error while receiving/processing message:", err.message);
+                console.error("❌ Error while receiving/processing submission:", err.message);
                 // Don't ack, will be retried or sent to DLQ if configured
             }
 
