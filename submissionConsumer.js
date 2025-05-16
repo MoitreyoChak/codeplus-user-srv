@@ -18,8 +18,18 @@ const makeSubmission = async (data) => {
     }
     user.submissions.push(submission);
 
+    // Only increment 'solved' if submission is accepted
+    const shouldIncrement = status === "AC";
+
     try {
-        await User.findByIdAndUpdate(id, user);
+        // await User.findByIdAndUpdate(id, user);
+        await User.findByIdAndUpdate(
+            id,
+            {
+                $set: { submissions: user.submissions },
+                ...(shouldIncrement && { $inc: { solved: 1 } })
+            }
+        );
         console.log("✅ Submission persisted successfully");
     } catch (e) {
         console.error("❌ Error while storing the submission:", e.message);

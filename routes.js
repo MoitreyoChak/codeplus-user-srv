@@ -1,11 +1,12 @@
 import express from 'express';
 const router = express.Router();
+import { validateNextAuthSession } from './authMiddleware.js';
 import {
     insertUser, deleteUser, submitQuestion, makeSubmission, updateSubmissionStatus,
     getUserDetails, getAllsubmissions, getAllQuestionsPosted
 } from './controllers.js';
 
-router.route("/").get((req, res) => {
+router.route("/").get(validateNextAuthSession, (req, res) => {
     res.send('Hello World from port 5000!')
 });
 

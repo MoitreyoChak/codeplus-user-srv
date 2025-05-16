@@ -65,6 +65,7 @@ const user = new Schema(
             type: [submission],
             default: [],
         },
+        solved: Number
     },
     {
         timestamps: true,
