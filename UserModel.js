@@ -57,6 +57,10 @@ const user = new Schema(
                 "Email is invalid",
             ],
         },
+        password: {
+            type: String,
+            required: true
+        },
         questionsPosted: {
             type: [question],
             default: [],

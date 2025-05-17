@@ -7,6 +7,7 @@ const insertUser = catchAsyncError(async (req, res) => {
     const user = {
         name: req.body.name,
         email: req.body.email,
+        password: req.body.password,
         questionsPosted: [],
         submissions: []
     }

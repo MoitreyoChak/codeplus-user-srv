@@ -14,15 +14,15 @@ router.route("/insert").post(insertUser);
 
 router.route("/delete/:id").delete(deleteUser);
 
-router.route("/:id").get(getUserDetails);
+router.route("/:id").get(validateNextAuthSession, getUserDetails);
 
-router.route("/:id/submissions").get(getAllsubmissions);
-router.route("/:id/submission/:qid").post(makeSubmission);
-router.route("/:id/submission/:sid").patch(updateSubmissionStatus);
+router.route("/:id/submissions").get(validateNextAuthSession, getAllsubmissions);
+router.route("/:id/submission/:qid").post(validateNextAuthSession, makeSubmission);
+router.route("/:id/submission/:sid").patch(validateNextAuthSession, updateSubmissionStatus);
 
 
-router.route("/:id/question/:qid").post(submitQuestion);
+router.route("/:id/question/:qid").post(validateNextAuthSession, submitQuestion);
 
-router.route("/:id/questions").get(getAllQuestionsPosted);
+router.route("/:id/questions").get(validateNextAuthSession, getAllQuestionsPosted);
 
 export default router;
