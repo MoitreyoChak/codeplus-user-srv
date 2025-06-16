@@ -45,7 +45,6 @@ const makeSubmission = async (data) => {
         questionTitle,
         verdict
     }
-    // user.submissions.push(submission);
 
     // Only increment 'solved' if submission is accepted
     let shouldIncrement = verdict === "AC";
@@ -94,17 +93,27 @@ const makeSubmission = async (data) => {
         }
     }
 
+    const incFields = {
+        [`difficultyCategory.${difficulty}.solved`]: shouldIncrement ? 1 : 0,
+        [`languages.${language}.solved`]: shouldIncrement ? 1 : 0,
+        ...Object.fromEntries(
+            Object.entries(skillUpdates).filter(([key]) => key.includes('.solved'))
+        )
+    };
+
+    if (shouldIncrement) {
+        incFields.solved = 1; // ✅ Top-level solved field
+    }
+
     const updateObject = {
         $push: { submissions: submission },
-        ...(shouldIncrement && { $inc: { solved: 1 } }),
-        $inc: {
-            [`difficultyCategory.${difficulty}.solved`]: shouldIncrement ? 1 : 0,
-            [`languages.${language}.solved`]: shouldIncrement ? 1 : 0,
-            ...Object.fromEntries(
-                Object.entries(skillUpdates).filter(([key]) => key.includes('.solved'))
-            )
-        }
+        $inc: incFields
     };
+
+    if (skillUpdates.$push) {
+        Object.assign(updateObject.$push, skillUpdates.$push);
+    }
+
 
     if (skillUpdates.$push) {
         Object.assign(updateObject.$push, skillUpdates.$push);
@@ -114,20 +123,6 @@ const makeSubmission = async (data) => {
     await User.findByIdAndUpdate(id, updateObject);
 
     console.log(`✅ Submission processed for user ${id}. Solved: ${shouldIncrement ? 'Yes' : 'No'}`);
-
-    // update user submissions and increment solved count if applicable
-    // await User.findByIdAndUpdate(id, {
-    //     $push: { submissions: submission },
-    //     ...(shouldIncrement && { $inc: { solved: 1 } }),
-    //     $inc: {
-    //         [`difficultyCategory.${difficulty}.solved`]: shouldIncrement ? 1 : 0,
-    //         [`languages.${language}.solved`]: shouldIncrement ? 1 : 0,
-    //         [`advancedSkills.${tags.advanced}.solved`]: shouldIncrement ? 1 : 0,
-    //         [`intermediateSkills.${tags.intermediate}.solved`]: shouldIncrement ? 1 : 0,
-    //         [`basicSkills.${tags.basic}.solved`]: shouldIncrement ? 1 : 0
-    //     }
-    // })
-
 }
 
 
