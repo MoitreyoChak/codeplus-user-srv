@@ -29,10 +29,9 @@ const submission = new Schema({
         type: String,
         required: [true, "Please provide the question title"],
     },
-    status: {
+    verdict: {
         type: String,
-        enum: ['AC', 'WA', 'TLE'],
-        default: 'pending'
+        enum: ['AC', 'WA', 'TLE', 'compilation-error'],
     }
 },
     {
@@ -69,7 +68,35 @@ const user = new Schema(
             type: [submission],
             default: [],
         },
-        solved: Number
+        solved: Number,
+        totalQuestions: Number,
+        difficultyCategory: {
+            Easy: {
+                total: Number,
+                solved: Number
+            },
+            Medium: {
+                total: Number,
+                solved: Number
+            },
+            Hard: {
+                total: Number,
+                solved: Number
+            }
+        },
+        languages: [{ language: String, solved: Number }],
+        advancedSkills: [{
+            tag: String,
+            solved: Number
+        }],
+        intermediateSkills: [{
+            tag: String,
+            solved: Number
+        }],
+        basicSkills: [{
+            tag: String,
+            solved: Number
+        }],
     },
     {
         timestamps: true,
@@ -77,7 +104,7 @@ const user = new Schema(
 );
 
 
-const User = mongoose.models.UserDetails || mongoose.model("UserDetails", user);
+const User = mongoose.models.UserDetails || mongoose.model("users", user);
 
 // const User = mongoose.model("UserDetails", user);
 export { User };

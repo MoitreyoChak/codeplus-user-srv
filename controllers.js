@@ -9,7 +9,31 @@ const insertUser = catchAsyncError(async (req, res) => {
         email: req.body.email,
         password: req.body.password,
         questionsPosted: [],
-        submissions: []
+        submissions: [],
+        solved: 0,
+        totalQuestions: 6,
+        difficultyCategory: {
+            Easy: {
+                total: 0,
+                solved: 0
+            },
+            Medium: {
+                total: 0,
+                solved: 0
+            },
+            Hard: {
+                total: 0,
+                solved: 0
+            }
+        },
+        languages: [
+            { language: 'c', solved: 0 },
+            { language: 'cpp', solved: 0 },
+            { language: 'java', solved: 0 }
+        ],
+        advancedSkills: [],
+        intermediateSkills: [],
+        basicSkills: []
     }
     const result = await User.create(user);
 
@@ -39,7 +63,8 @@ const deleteUser = catchAsyncError(async (req, res) => {
 // const updateUser = async (req, res) => { }
 
 const getUserDetails = catchAsyncError(async (req, res) => {
-    const { id } = req.params;
+    // const { id } = req.params;
+    const id = req.user.id;
 
     const user = await User.findById(id).select("-_id -__v -createdAt -updatedAt").lean();
 

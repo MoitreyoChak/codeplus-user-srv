@@ -1,88 +1,185 @@
 import { getJetStreamClients } from "./jetStreamSetup.js";
 import { User } from "./UserModel.js";
+import { withRetry } from "./utils/retryLogic.js";
 
 const makeSubmission = async (data) => {
-    const { id, submissionId, qid, questionTitle, problemSetter, status } = data;
-    const user = await User.findById(id).select("submissions").lean();
+    const { id, submissionId, qid, questionTitle, language, tags, difficulty, verdict } = data;
+    const skillCategories = {
+        basic: [
+            "array", "string", "math", "implementation", "simulation", "sorting",
+            "searching", "two-pointers", "pointers", "prefix-sum", "matrix"
+        ],
+        intermediate: [
+            "hashmap", "linked-list", "stack", "queue", "recursion", "sliding-window",
+            "binary-search", "greedy", "tree", "binary-tree", "binary-search-tree",
+            "hashing", "intervals", "bit-manipulation", "combinatorics", "memoization"
+        ],
+        advanced: [
+            "heap", "priority-queue", "backtracking", "dynamic-programming",
+            "divide-and-conquer", "number-theory", "geometry", "graph", "bfs", "dfs",
+            "topological-sort", "union-find", "disjoint-set", "shortest-path",
+            "dijkstra", "bellman-ford", "floyd-warshall", "minimum-spanning-tree",
+            "kruskal", "prim", "segment-tree", "fenwick-tree", "trie", "monotonic-stack",
+            "monotonic-queue", "greedy-intervals", "suffix-array", "rolling-hash",
+            "game-theory", "state-space-search", "modular-arithmetic", "bitmasking",
+            "recursion-tree"
+        ]
+    };
+    const categorizeTag = (tag) => {
+        if (skillCategories.basic.includes(tag)) return 'basic';
+        if (skillCategories.intermediate.includes(tag)) return 'intermediate';
+        if (skillCategories.advanced.includes(tag)) return 'advanced';
+        return 'basic'; // default fallback
+    };
 
+    const user = await User.findById(id).select("submissions basicSkills intermediateSkills advancedSkills").lean();
     if (!user) {
         console.warn("⚠️ No user found with provided id. Could not persist submission in user srv.");
         return;
     }
+    console.log("user", user);
 
     const submission = {
         submissionId,
         questionId: qid,
         questionTitle,
-        status: status
+        verdict
     }
-    user.submissions.push(submission);
+    // user.submissions.push(submission);
 
     // Only increment 'solved' if submission is accepted
-    const shouldIncrement = status === "AC";
+    let shouldIncrement = verdict === "AC";
 
-    try {
-        // await User.findByIdAndUpdate(id, user);
-        await User.findByIdAndUpdate(
-            id,
-            {
-                $set: { submissions: user.submissions },
-                ...(shouldIncrement && { $inc: { solved: 1 } })
-            }
-        );
-        console.log("✅ Submission persisted successfully");
-    } catch (e) {
-        console.error("❌ Error while storing the submission:", e.message);
+    // increment only if this is the first time the user is solving this question
+    if (shouldIncrement) {
+        const alreadySolved = user.submissions.some(sub => sub.questionId.toString() === qid && sub.verdict === "AC");
+        if (alreadySolved) {
+            console.warn("⚠️ User has already solved this question.");
+            shouldIncrement = false;
+        }
     }
+
+    const skillUpdates = {};
+
+    if (shouldIncrement && tags && tags.length > 0) {
+        // Categorize tags and prepare bulk updates
+        const tagCategories = {
+            basic: [],
+            intermediate: [],
+            advanced: []
+        };
+
+        tags.forEach(tag => {
+            const category = categorizeTag(tag);
+            tagCategories[category].push(tag);
+        });
+
+        // Process each category
+        for (const [category, categoryTags] of Object.entries(tagCategories)) {
+            const skillField = `${category}Skills`;
+
+            categoryTags.forEach(tag => {
+                const userSkills = user[skillField] || [];
+                const existingSkill = userSkills.find(skill => skill.tag === tag);
+
+                if (existingSkill) {
+                    const skillIndex = userSkills.indexOf(existingSkill);
+                    skillUpdates[`${skillField}.${skillIndex}.solved`] = 1;
+                } else {
+                    skillUpdates[`$push`] ??= {};
+                    skillUpdates[`$push`][skillField] ??= [];
+                    skillUpdates[`$push`][skillField].push({ tag, solved: 1 });
+                }
+            });
+        }
+    }
+
+    const updateObject = {
+        $push: { submissions: submission },
+        ...(shouldIncrement && { $inc: { solved: 1 } }),
+        $inc: {
+            [`difficultyCategory.${difficulty}.solved`]: shouldIncrement ? 1 : 0,
+            [`languages.${language}.solved`]: shouldIncrement ? 1 : 0,
+            ...Object.fromEntries(
+                Object.entries(skillUpdates).filter(([key]) => key.includes('.solved'))
+            )
+        }
+    };
+
+    if (skillUpdates.$push) {
+        Object.assign(updateObject.$push, skillUpdates.$push);
+    }
+
+    // Update user document
+    await User.findByIdAndUpdate(id, updateObject);
+
+    console.log(`✅ Submission processed for user ${id}. Solved: ${shouldIncrement ? 'Yes' : 'No'}`);
+
+    // update user submissions and increment solved count if applicable
+    // await User.findByIdAndUpdate(id, {
+    //     $push: { submissions: submission },
+    //     ...(shouldIncrement && { $inc: { solved: 1 } }),
+    //     $inc: {
+    //         [`difficultyCategory.${difficulty}.solved`]: shouldIncrement ? 1 : 0,
+    //         [`languages.${language}.solved`]: shouldIncrement ? 1 : 0,
+    //         [`advancedSkills.${tags.advanced}.solved`]: shouldIncrement ? 1 : 0,
+    //         [`intermediateSkills.${tags.intermediate}.solved`]: shouldIncrement ? 1 : 0,
+    //         [`basicSkills.${tags.basic}.solved`]: shouldIncrement ? 1 : 0
+    //     }
+    // })
 
 }
 
 
 export const startSubmissionConsumer = async () => {
-    const { js, jsm, sc, nc } = getJetStreamClients();
+    let js, sc;
+    const initConsumer = async () => {
+        ({ js, sc } = getJetStreamClients());
+        if (!js) throw new Error('JetStream client not initialized');
 
-    let consumer = null;
-    // Get durable consumer using modern API
-    try {
-        consumer = await js.consumers.get("USER", "user-submission-worker");
+        const consumer = await js.consumers.get("USER", "user-submission-worker");
+        if (!consumer) throw new Error('Failed to get consumer');
+
         console.log("✅ jetStream consumer user-submission-worker started...");
-    } catch (e) {
-        console.error("❌ jetStream consumer error", e.message);
-    }
+        return consumer;
+    };
 
-    // Pull messages continuously
-    const pullMessages = async () => {
-        console.log("[*] starting to pull submissions...");
+    const consumer = await withRetry(initConsumer, {
+        name: 'submission consumer initialization'
+    });
+
+    const processMessages = async () => {
         while (true) {
-            // const messages = await consumer.fetch({ max_messages: 10, expires: 10000 });
-            // const messages = await consumer.consume({ expires: 0 }); // 0 = no timeout, keeps listening
-
             try {
                 const messages = await consumer.fetch({ max_messages: 1, expires: 15000 });
+                if (!messages) continue;
 
                 for await (const m of messages) {
-                    const data = JSON.parse(sc.decode(m.data));
+                    try {
+                        const data = JSON.parse(sc.decode(m.data));
 
-                    if (m.info.redelivered) {
-                        console.warn("⚠️ Redelivered message skipping...");
-                        // console.warn("⚠️ Redelivered message:", data);
-                        continue;
+                        if (m.info.redelivered) {
+                            console.warn("⚠️ Redelivered message skipping...");
+                            continue;
+                        }
+
+                        console.log("📩 Received submission:", data);
+                        await makeSubmission(data);
+                        await m.ack();
+                        console.log("✅ ACK done");
+                    } catch (err) {
+                        console.error("❌ Error processing message:", err.message);
+                        // Don't ack problematic messages
                     }
-                    console.log("📩 Received user submission:", data);
-
-                    await makeSubmission(data);
-
-                    m.ack();
-                    console.log("✅ ACK done");
                 }
             } catch (err) {
-                console.error("❌ Error while receiving/processing submission:", err.message);
-                // Don't ack, will be retried or sent to DLQ if configured
+                console.error("❌ Error fetching messages:", err.message);
+                throw err; // Trigger retry
             }
-
         }
     };
 
-    pullMessages();
-
+    await withRetry(processMessages, {
+        name: 'submission message processing'
+    });
 };

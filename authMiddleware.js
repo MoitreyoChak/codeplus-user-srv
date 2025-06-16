@@ -44,8 +44,8 @@ const validateNextAuthSession = async (req, res, next) => {
             };
 
             next();
-        } catch (ironError) {
-            console.error('Iron unseal error:', ironError);
+        } catch (e) {
+            console.error('error:', e);
             return res.status(401).json({
                 message: 'Invalid session token'
             });
