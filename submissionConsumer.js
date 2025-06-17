@@ -32,7 +32,7 @@ const makeSubmission = async (data) => {
         return 'basic'; // default fallback
     };
 
-    const user = await User.findById(id).select("submissions basicSkills intermediateSkills advancedSkills").lean();
+    const user = await User.findById(id).select("submissions basicSkills intermediateSkills advancedSkills languages").lean();
     if (!user) {
         console.warn("⚠️ No user found with provided id. Could not persist submission in user srv.");
         return;
@@ -95,11 +95,21 @@ const makeSubmission = async (data) => {
 
     const incFields = {
         [`difficultyCategory.${difficulty}.solved`]: shouldIncrement ? 1 : 0,
-        [`languages.${language}.solved`]: shouldIncrement ? 1 : 0,
+        // [`languages.${language}.solved`]: shouldIncrement ? 1 :  0,
         ...Object.fromEntries(
             Object.entries(skillUpdates).filter(([key]) => key.includes('.solved'))
         )
     };
+
+    // Handle languages array update - find the correct index for the language
+    if (shouldIncrement && language && user.languages) {
+        const languageIndex = user.languages.findIndex(lang => lang.language === language);
+        if (languageIndex !== -1) {
+            incFields[`languages.${languageIndex}.solved`] = 1;
+        } else {
+            console.warn(`⚠️ Language ${language} not found in user's languages array`);
+        }
+    }
 
     if (shouldIncrement) {
         incFields.solved = 1; // ✅ Top-level solved field

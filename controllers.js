@@ -14,15 +14,15 @@ const insertUser = catchAsyncError(async (req, res) => {
         totalQuestions: 6,
         difficultyCategory: {
             Easy: {
-                total: 0,
+                total: 2,
                 solved: 0
             },
             Medium: {
-                total: 0,
+                total: 2,
                 solved: 0
             },
             Hard: {
-                total: 0,
+                total: 2,
                 solved: 0
             }
         },
