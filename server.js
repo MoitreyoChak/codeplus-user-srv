@@ -2,6 +2,8 @@ import mongoose from "mongoose";
 import app from "./app.js";
 import { initJetStream } from "./jetStreamSetup.js";
 import { startSubmissionConsumer } from "./submissionConsumer.js";
+import { withRetry } from "./utils/retryLogic.js";
+
 // import { startQuestionConsumer } from "./questionConsumer.js";
 
 
@@ -40,8 +42,11 @@ const initializeServices = async () => {
         await connectDB();
 
         // Initialize JetStream
+        // await initJetStream();
         try {
-            await initJetStream();
+            await withRetry(initJetStream, {
+                name: 'connect to JetStream',
+            });
             console.log("✅ Successfully connected to JetStream");
         } catch (e) {
             console.error("❌ JetStream connection error:", e.message);
@@ -52,10 +57,13 @@ const initializeServices = async () => {
         startServer();
 
         // Start consumers in the background
-        startSubmissionConsumer().catch(error => {
-            console.error("❌ Submission consumer error:", error.message);
-            // Consumer will keep retrying in the background
+        await withRetry(startSubmissionConsumer, {
+            name: 'start Submission Consumer'
         });
+        // startSubmissionConsumer().catch(error => {
+        //     console.error("❌ Submission consumer error:", error.message);
+        //     // Consumer will keep retrying in the background
+        // });
 
         // Optionally start question consumer
         // startQuestionConsumer().catch(error => {
